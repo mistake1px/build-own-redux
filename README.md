@@ -94,3 +94,132 @@ store.dispatch({
   type: 'INCREMENT'
 })
 ```
+
+### v0.6.1
+
+上面的middleware中，我们只实现了一种middleware，如果有多种的话，该怎么办？
+比如说，现在有一个记录异常的middleware：
+
+``` js
+const store = createStore(reducer);
+const next = store.dispatch;
+store.dispatch = (action) => {
+  try {
+    console.log('success: all ok!')
+    next(action);
+  } catch (err) {
+    console.error('错误报告: ', err)
+  }
+}
+```
+
+我们怎么将上面两种middleware合并起来呢？
+
+按照常规思路，合并两个middleware：
+
+``` js
+store.dispatch = action => {
+  try {
+    // exeception
+    console.log('success: all ok!')
+    // logger
+    console.log('this state: ', store.getState())
+    console.log('action: ', action)
+    next(action)
+    console.log('next state: ', store.getState())
+  } catch(e) {
+    console.log('err: ', e)
+  }
+}
+```
+
+这种方式只是展示一下怎么将上面两个middleware合并起来，根本没有任何实用性。
+我们接下来考虑一下怎么让middleware直接合作？
+
+首先，提取middleware：
+
+``` js
+const store = createStore(reducer);
+const next = store.dispatch;
+const loggerMiddleware = (action) => {
+  console.log('this state', store.getState());
+  console.log('action', action);
+  next(action);
+  console.log('next state', store.getState());
+}
+store.dispatch = (action) => {
+  try {
+    console.log('success: all ok!')
+    loggerMiddleware(action);
+  } catch (err) {
+    console.error('错误报告: ', err)
+  }
+}
+```
+
+上面我们将`loggerMiddleware`提取出来，然后将其应用到`exceptionMiddleware`中。
+
+接下来我们更进一步，将`exceptionMiddleware`也提取出来：
+
+``` js
+const exceptionMiddleware = (action) => {
+  try {
+    loggerMiddleware(action);
+  } catch (err) {
+    console.error('错误报告: ', err)
+  }
+}
+store.dispatch = exceptionMiddleware;
+```
+
+有一个问题，我们在`exceptionMiddleware`中使用`loggerMiddleware`，但是其中的`next`好像又是最外层的，我们应该将其作为参数传入：
+
+``` js
+const loggerMiddleware = next => action => {
+  console.log('this state: ', store.getState())
+  console.log('action: ', action)
+  next(action)
+  console.log('next state: ', store.getState())
+}
+const exceptionMiddleware = next => action => {
+  try {
+    console.log('success: all ok!')
+    next(action)
+  } catch (e) {
+    console.error('error: ', e)
+  }
+}
+```
+
+使用时，这样调用：
+
+``` js
+store.dispatch = exceptionMiddleware(loggerMiddleware(next));
+```
+
+如果我们将各种middleware文件写入到单独的文件中呢？这个时候发现`store`没了，所以我们继续添加参数：
+
+``` js
+const loggerMiddleware = store => next => action => {
+  console.log('this state: ', store.getState())
+  console.log('action: ', action)
+  next(action)
+  console.log('next state: ', store.getState())
+}
+const exceptionMiddleware = store => next => action => {
+  try {
+    console.log('success: all ok!')
+    next(action)
+  } catch (e) {
+    console.error('error: ', e)
+  }
+}
+```
+
+使用：
+
+``` js
+const exception = exceptionMiddleware(store)
+const logger = loggerMiddleware(store)
+store.dispatch = exception(logger(next))
+```

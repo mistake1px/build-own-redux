@@ -65,12 +65,29 @@ const store = createStore(reducer)
 
 const next = store.dispatch
 
-store.dispatch = action => {
+const loggerMiddleware = store => next => action => {
   console.log('this state: ', store.getState())
   console.log('action: ', action)
   next(action)
   console.log('next state: ', store.getState())
 }
+const exceptionMiddleware = store => next => action => {
+  try {
+    console.log('success: all ok!')
+    next(action)
+  } catch (e) {
+    console.error('error: ', e)
+  }
+}
+const timeMiddleware = store => next => action => {
+  console.log('time: ', +new Date())
+  next(action)
+}
+const exception = exceptionMiddleware(store)
+const logger = loggerMiddleware(store)
+const time = timeMiddleware(store)
+store.dispatch = exception(time(logger(next)))
+
 store.dispatch({
   type: 'INCREMENT'
 })
