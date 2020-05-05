@@ -1,3 +1,5 @@
+import compose from './compose.mjs'
+
 function combineReducers(reducers) {
   const keys = Object.keys(reducers)
   return function (state = {}, action) {
@@ -16,17 +18,20 @@ function applyMiddleware(...middlewares) {
   return function rewriteCreateStore(oldCreateStore) {
     return function newCreateStore(reducer, initState) {
       const store = oldCreateStore(reducer, initState)
-      const chain = middlewares.map(m => m(store))
-      let dispatch = store.dispatch
-      chain.reverse().map(m => {
-        dispatch = m(dispatch)
-      })
+      const simpleStore = { getState: store.getState }
+      const chain = middlewares.map(m => m(simpleStore))
+      let dispatch = compose(...chain)(store.dispatch)
       store.dispatch = dispatch
       return store
     }
   }
 }
 function createStore(reducer, initState, rewriteCreateStore) {
+  // 如果initState是函数，证明没传入initstate
+  if (typeof initState === 'function') {
+    rewriteCreateStore = initState
+    initState = undefined
+  }
   if (rewriteCreateStore) {
     const newCreateStore = rewriteCreateStore(createStore)
     return newCreateStore(reducer, initState)
@@ -36,6 +41,10 @@ function createStore(reducer, initState, rewriteCreateStore) {
   // subscribe
   function subscribe(listener) {
     listeners.push(listener)
+    return function unsubscribe() {
+      const index = listeners.indexOf(listener)
+      listeners.splice(index, 1)
+    }
   }
   // changeState
   function dispatch(action) {
@@ -102,7 +111,7 @@ const rewriteCreateStore = applyMiddleware(
   loggerMiddleware
 )
 // const store = rewriteCreateStore(createStore)(reducer)
-const store = createStore(reducer, { count: 1 }, rewriteCreateStore)
+const store = createStore(reducer, rewriteCreateStore)
 
 store.dispatch({
   type: 'INCREMENT'
