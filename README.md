@@ -74,3 +74,23 @@ function counterReducer(state, action) {
 ``` js
 dispatch({ type: Symbol() })
 ```
+
+## 0.6 middleware
+
+下面说到最难理解的部分`middleware`
+
+我们通过改造dispatch来实现middleware。
+
+``` js
+const next = store.dispatch
+
+store.dispatch = action => {
+  console.log('this state: ', store.getState())
+  console.log('action: ', action)
+  next(action)
+  console.log('next state: ', store.getState())
+}
+store.dispatch({
+  type: 'INCREMENT'
+})
+```

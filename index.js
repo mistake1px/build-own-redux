@@ -35,7 +35,7 @@ function createStore(reducer, initState) {
   return { subscribe, getState, dispatch }
 }
 
-/** 多种状态合并问题 */
+/** middleware */
 
 let initCounterState = {
   count: 0
@@ -59,48 +59,18 @@ function counterReducer (state, action) {
       return state
   }
 }
-let initInfoState = {
-  name: 'jack',
-  desc: 'handsome guy'
-}
-function InfoReducer (state, action) {
-  if (!state) {
-    state = initInfoState
-  }
-  switch (action.type) {
-    case 'SET_NAME':
-      return {
-        ...state,
-        name: action.name
-      }
-    case 'SET_DESC':
-      return {
-        ...state,
-        desc: action.desc
-      }
-    default:
-      return state;
-  }
-}
-// combine 
-const reducer = combineReducers({
-  counter: counterReducer,
-  info: InfoReducer
-})
+const reducer = counterReducer
 
-let store = createStore(reducer)
+const store = createStore(reducer)
 
-store.subscribe(() => {
-  let state = store.getState();
-  console.log(state.counter.count, state.info.name, state.info.desc);
-})
-/*自增*/
+const next = store.dispatch
+
+store.dispatch = action => {
+  console.log('this state: ', store.getState())
+  console.log('action: ', action)
+  next(action)
+  console.log('next state: ', store.getState())
+}
 store.dispatch({
   type: 'INCREMENT'
-});
-/*自减*/
-store.dispatch({
-  type: 'SET_NAME',
-  name: 'wanger'
-});
-
+})
