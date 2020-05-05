@@ -1,4 +1,3 @@
-
 export default function createStore(reducer, initState, rewriteCreateStore) {
   // 如果initState是函数，证明没传入initstate
   if (typeof initState === 'function') {
@@ -30,6 +29,11 @@ export default function createStore(reducer, initState, rewriteCreateStore) {
   function getState() {
     return state
   }
+  // replace reducer
+  function replaceReducer(nextReducer) {
+    reducer = nextReducer
+    dispatch({ type: Symbol() })
+  }
   dispatch({ type: Symbol() })
-  return { subscribe, getState, dispatch }
+  return { subscribe, getState, dispatch, replaceReducer }
 }

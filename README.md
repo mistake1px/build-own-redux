@@ -290,3 +290,102 @@ const createStore = (reducer, initState, rewriteCreateStoreFunc) => {
 ## v0.8
 
 将各个功能独立为文件
+
+### v0.8.1
+
+完善createStore，添加`replaceReducer`功能。这里说一下这个功能的作用：使用新的reducer来替代旧的reducer(包括创建store时传入的reducer)
+
+``` js
+// replace reducer
+function replaceReducer(nextReducer) {
+  reducer = nextReducer
+  dispatch({ type: Symbol() })
+}
+```
+
+同样的在这一步中，我们建立reducers文件夹，将所有的reducer统一放在这里。
+
+### v0.8.2
+
+最后一个功能，我们在使用react-redux的时候，经常使用的api：`bindActionCreators`。它允许我们隐藏`dispatch`和`action creator`，就像一个正常的通过props传入的函数属性一样，感受不到redux的存在。
+
+通常我们这样使用：
+
+``` js
+const reducer = combineReducers({
+  count: counterReducer,
+  info: infoReducer
+})
+const store = createStore(reducer)
+// 下面是action creator 方法：
+function increment() {
+  return { type: 'INCREMENT' }
+}
+function setName(name) {
+  return {
+    type: 'SET_NAME',
+    name: name
+  }
+}
+const actions = {
+  increment: function() {
+    return store.dispatch(increment.apply(this, arguments))
+  },
+  setName: function() {
+    return store.dispatch(setName.apply(this, arguments))
+  }
+}
+actions.increment()
+actions.setName('kimi')
+```
+
+在通过`action creator`生成绑定的方法时，可以通过更统一的方式来简化：
+
+``` js
+const actions = bindActionCreators({ increment, setName }, store.dispatch)
+```
+
+源码：
+
+```js
+// 单个处理
+function bindActionCreator(actionCreator, dispatch) {
+  return function () {
+    return dispatch(actionCreator.apply(this, arguments))
+  }
+}
+export default function bindActionCreators(actionCreators, dispatch) {
+  // 如果只有一个action creator
+  if (typeof actionCreators === 'function') {
+    return bindActionCreator(actionCreators, dispatch)
+  }
+  if (typeof actionCreators !== 'object' || actionCreators === null) {
+    throw new Error()
+  }
+  const keys = Object.keys(actionCreators)
+  const boundActionCreators = {}
+  for (let i=0;i<keys.length;i++) {
+    const key = keys[i]
+    const actionCreator = actionCreators[key]
+    if (typeof actionCreator === 'function') {
+      boundActionCreators[key] = bindActionCreator(actionCreator, dispatch)
+    }
+  }
+  return boundActionCreators
+}
+```
+
+## v0.9 总结
+
+首先对各个概念进行总结
+
+- createStore 创建store对象，包含getState, dispatch, subscribe, replaceReducer
+- reducer是一个计划函数，接收旧的state和action，生成新的state
+- action是一个对象，上面reducer的第二个参数。
+- dispatch触发action，生成新的state
+- subscribe实现订阅功能，每次dispatch的时候，触发订阅的内容
+- combineReducers 将多个reducer组合成一个
+- replaceReducer 替换reducer函数
+- middleware扩展dispatch函数
+
+![流程图](https://github.com/mistake1px/build-own-redux/blob/master/demo/redux-flow.webp)
