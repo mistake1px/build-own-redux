@@ -286,3 +286,7 @@ const createStore = (reducer, initState, rewriteCreateStoreFunc) => {
 - 对subscribe提供取消订阅功能
 - 引入compose，对applyMiddleware实现时进行优化
 - createStore时，对是否传入initState进行判断
+
+## v0.8
+
+将各个功能独立为文件
