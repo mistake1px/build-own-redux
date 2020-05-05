@@ -1,4 +1,21 @@
-function createStore(initState) {
+function plan(state, action) {
+  switch(action.type) {
+    case 'INCREMENT':
+      return {
+        ...state,
+        count: state.count + 1
+      }
+    case 'DECREMENT':
+      return {
+        ...state,
+        count: state.count - 1
+      }
+    default:
+      return state
+  }
+}
+
+function createStore(plan, initState) {
   let state = initState
   let listeners = []
   // subscribe
@@ -6,8 +23,8 @@ function createStore(initState) {
     listeners.push(listener)
   }
   // changeState
-  function changeState(newState) {
-    state = newState
+  function changeState(action) {
+    state = plan(state, action)
     for (let l of listeners) {
       l()
     }
@@ -19,33 +36,26 @@ function createStore(initState) {
   return { subscribe, getState, changeState }
 }
 
-/** 管理多个状态 */
+/** 按计划改变状态 */
 
 let initState = {
-  counter: { count: 0 },
-  info: { name: '', desc: '' }
+  count: 0
 }
-let store = createStore(initState)
-// 订阅info
+let store = createStore(plan, initState)
+
 store.subscribe(() => {
   let state = store.getState()
-  console.log(`${state.info.name}: ${state.info.desc}`)
+  console.log(`counte: ${state.count}`)
 })
-// 订阅counter
-store.subscribe(() => {
-  let state = store.getState()
-  console.log(`counter: ${state.counter.count}`)
-})
-// change info
+/*自增*/
 store.changeState({
-  ...store.getState(),
-  info: {
-    name: 'jack',
-    desc: 'handsome guy'
-  }
-})
-// change count
+  type: 'INCREMENT'
+});
+/*自减*/
 store.changeState({
-  ...store.getState(),
-  counter: { count: 43 }
-})
+  type: 'DECREMENT'
+});
+/*我想随便改 计划外的修改是无效的！仍然返回0*/
+store.changeState({
+  count: 'abc'
+});
