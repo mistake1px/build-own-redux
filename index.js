@@ -1,4 +1,49 @@
-function plan(state, action) {
+function combineReducers(reducers) {
+  const keys = Object.keys(reducers)
+  return function (state = {}, action) {
+    const nextState = {}
+    for (let i=0;i<keys.length;i++) {
+      const key = keys[i]
+      const reducer = reducers[key]
+      const prevStateForKey = state[key]
+      const nextStateForKey = reducer(prevStateForKey, action)
+      nextState[key] = nextStateForKey
+    }
+    return nextState
+  }
+}
+
+function createStore(reducer, initState) {
+  let state = initState
+  let listeners = []
+  // subscribe
+  function subscribe(listener) {
+    listeners.push(listener)
+  }
+  // changeState
+  function dispatch(action) {
+    state = reducer(state, action)
+    for (let l of listeners) {
+      l()
+    }
+  }
+  // getState
+  function getState() {
+    return state
+  }
+  return { subscribe, getState, dispatch }
+}
+
+/** 多种状态合并问题 */
+
+let initState = {
+  counter: { count: 0 },
+  info: {
+    name: 'jack',
+    desc: 'handsome guy'
+  }
+}
+function counterReducer (state, action) {
   switch(action.type) {
     case 'INCREMENT':
       return {
@@ -14,48 +59,41 @@ function plan(state, action) {
       return state
   }
 }
-
-function createStore(plan, initState) {
-  let state = initState
-  let listeners = []
-  // subscribe
-  function subscribe(listener) {
-    listeners.push(listener)
+function InfoReducer (state, action) {
+  switch (action.type) {
+    case 'SET_NAME':
+      return {
+        ...state,
+        name: action.name
+      }
+    case 'SET_DESC':
+      return {
+        ...state,
+        desc: action.desc
+      }
+    default:
+      return state;
   }
-  // changeState
-  function changeState(action) {
-    state = plan(state, action)
-    for (let l of listeners) {
-      l()
-    }
-  }
-  // getState
-  function getState() {
-    return state
-  }
-  return { subscribe, getState, changeState }
 }
+// combine 
+const reducer = combineReducers({
+  counter: counterReducer,
+  info: InfoReducer
+})
 
-/** 按计划改变状态 */
-
-let initState = {
-  count: 0
-}
-let store = createStore(plan, initState)
+let store = createStore(reducer, initState)
 
 store.subscribe(() => {
-  let state = store.getState()
-  console.log(`counte: ${state.count}`)
+  let state = store.getState();
+  console.log(state.counter.count, state.info.name, state.info.desc);
 })
 /*自增*/
-store.changeState({
+store.dispatch({
   type: 'INCREMENT'
 });
 /*自减*/
-store.changeState({
-  type: 'DECREMENT'
+store.dispatch({
+  type: 'SET_NAME',
+  name: 'wanger'
 });
-/*我想随便改 计划外的修改是无效的！仍然返回0*/
-store.changeState({
-  count: 'abc'
-});
+
