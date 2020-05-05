@@ -31,19 +31,19 @@ function createStore(reducer, initState) {
   function getState() {
     return state
   }
+  dispatch({ type: Symbol() })
   return { subscribe, getState, dispatch }
 }
 
 /** 多种状态合并问题 */
 
-let initState = {
-  counter: { count: 0 },
-  info: {
-    name: 'jack',
-    desc: 'handsome guy'
-  }
+let initCounterState = {
+  count: 0
 }
 function counterReducer (state, action) {
+  if (!state) {
+    state = initCounterState
+  }
   switch(action.type) {
     case 'INCREMENT':
       return {
@@ -59,7 +59,14 @@ function counterReducer (state, action) {
       return state
   }
 }
+let initInfoState = {
+  name: 'jack',
+  desc: 'handsome guy'
+}
 function InfoReducer (state, action) {
+  if (!state) {
+    state = initInfoState
+  }
   switch (action.type) {
     case 'SET_NAME':
       return {
@@ -81,7 +88,7 @@ const reducer = combineReducers({
   info: InfoReducer
 })
 
-let store = createStore(reducer, initState)
+let store = createStore(reducer)
 
 store.subscribe(() => {
   let state = store.getState();

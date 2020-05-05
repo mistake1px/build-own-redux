@@ -43,3 +43,34 @@ function combineReducers(reducers) {
 ```
 
 另外需要说明的是：在`createStore`内部，我们注意到`changeState`和`plan`分别对应redux中的`dispatch`和`reducer`。最后我们将其改为`dispatch`和`reducer`。
+
+## v0.5
+
+上面我们将reducer拆分开了，但是state还是定义在一起的，项目中不同的state分布在不同的地方，定义在一起是不合理的，同时也会增加维护的难度，所以我们需要像拆分reducer一样拆分state。
+
+``` js
+let initCounterState = {
+  count: 0
+}
+function counterReducer(state, action) {
+  /*注意：如果 state 没有初始值，那就给他初始值！！*/  
+  if (!state) {
+      state = initState;
+  }
+  switch (action.type) {
+    case 'INCREMENT':
+      return {
+        ...state,
+        count: state.count + 1
+      }
+    default:
+      return state;
+  }
+}
+```
+
+同时在`createStore`内部，进行一次不匹配任何类型action的`dispatch`。目的是使每个reducer走到default这一步，从而返回自己初始化的state
+
+``` js
+dispatch({ type: Symbol() })
+```
