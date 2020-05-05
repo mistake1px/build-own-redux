@@ -12,8 +12,25 @@ function combineReducers(reducers) {
     return nextState
   }
 }
-
-function createStore(reducer, initState) {
+function applyMiddleware(...middlewares) {
+  return function rewriteCreateStore(oldCreateStore) {
+    return function newCreateStore(reducer, initState) {
+      const store = oldCreateStore(reducer, initState)
+      const chain = middlewares.map(m => m(store))
+      let dispatch = store.dispatch
+      chain.reverse().map(m => {
+        dispatch = m(dispatch)
+      })
+      store.dispatch = dispatch
+      return store
+    }
+  }
+}
+function createStore(reducer, initState, rewriteCreateStore) {
+  if (rewriteCreateStore) {
+    const newCreateStore = rewriteCreateStore(createStore)
+    return newCreateStore(reducer, initState)
+  }
   let state = initState
   let listeners = []
   // subscribe
@@ -35,8 +52,26 @@ function createStore(reducer, initState) {
   return { subscribe, getState, dispatch }
 }
 
-/** middleware */
+/** apply middleware */
 
+const loggerMiddleware = store => next => action => {
+  console.log('this state: ', store.getState())
+  console.log('action: ', action)
+  next(action)
+  console.log('next state: ', store.getState())
+}
+const exceptionMiddleware = store => next => action => {
+  try {
+    console.log('success: all ok!')
+    next(action)
+  } catch (e) {
+    console.error('error: ', e)
+  }
+}
+const timeMiddleware = store => next => action => {
+  console.log('time: ', +new Date())
+  next(action)
+}
 let initCounterState = {
   count: 0
 }
@@ -60,33 +95,14 @@ function counterReducer (state, action) {
   }
 }
 const reducer = counterReducer
-
-const store = createStore(reducer)
-
-const next = store.dispatch
-
-const loggerMiddleware = store => next => action => {
-  console.log('this state: ', store.getState())
-  console.log('action: ', action)
-  next(action)
-  console.log('next state: ', store.getState())
-}
-const exceptionMiddleware = store => next => action => {
-  try {
-    console.log('success: all ok!')
-    next(action)
-  } catch (e) {
-    console.error('error: ', e)
-  }
-}
-const timeMiddleware = store => next => action => {
-  console.log('time: ', +new Date())
-  next(action)
-}
-const exception = exceptionMiddleware(store)
-const logger = loggerMiddleware(store)
-const time = timeMiddleware(store)
-store.dispatch = exception(time(logger(next)))
+// 
+const rewriteCreateStore = applyMiddleware(
+  exceptionMiddleware,
+  timeMiddleware,
+  loggerMiddleware
+)
+// const store = rewriteCreateStore(createStore)(reducer)
+const store = createStore(reducer, { count: 1 }, rewriteCreateStore)
 
 store.dispatch({
   type: 'INCREMENT'

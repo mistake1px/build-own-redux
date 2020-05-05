@@ -223,3 +223,58 @@ const exception = exceptionMiddleware(store)
 const logger = loggerMiddleware(store)
 store.dispatch = exception(logger(next))
 ```
+
+### v0.6.2
+
+如何像redux那样使用middleware呢？我们知道`middleware`是通过重写dispatch来实现的，而dispatch是在createStore的时候定义的，所以我们要通过`createStore`实现`applyMiddlewares`
+
+想象一下，我们大概这么使用：
+
+``` js
+const newCreateStore = applyMiddleware(middleware1, middleware2...)(createStore)
+const store = newCreateStore(reducer)
+```
+
+代码
+
+``` js
+function applyMiddleware(...middlewares) {
+  return function rewriteCreateStore(oldCreateStore) {
+    return function newCreateStore(reducer, initState) {
+      const store = oldCreateStore(reducer, initState)
+      const chain = middlewares.map(m => m(store))
+      let dispatch = store.dispatch
+      chain.reverse().map(m => {
+        dispatch = m(dispatch)
+      })
+      store.dispatch = dispatch
+      return store
+    }
+  }
+}
+```
+
+使用时，是这样的：
+
+``` js
+const rewriteCreateStore = applyMiddleware(
+  exceptionMiddleware,
+  timeMiddleware,
+  loggerMiddleware
+)
+const store = rewriteCreateStore(createStore)(reducer)
+```
+
+显然，这样比较麻烦，对于需不需要middleware需要有两种方式来创建store，更近一步：
+
+``` js
+const createStore = (reducer, initState, rewriteCreateStoreFunc) => {
+    /*如果有 rewriteCreateStoreFunc，那就采用新的 createStore */
+    if(rewriteCreateStoreFunc){
+       const newCreateStore =  rewriteCreateStoreFunc(createStore);
+       return newCreateStore(reducer, initState);
+    }
+    /*否则按照正常的流程走*/
+    ...
+}
+```
